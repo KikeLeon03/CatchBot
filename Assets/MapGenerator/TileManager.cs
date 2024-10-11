@@ -7,6 +7,10 @@ public class TileManager : MonoBehaviour
     [SerializeField]
     FollowLineDrawer followLineDrawer;
 
+
+    [SerializeField]
+    CaveDrawer caveDrawer;
+
     [SerializeField]
     TileDrawer tileDrawer;
 
@@ -29,12 +33,8 @@ public class TileManager : MonoBehaviour
 
     void Update()
     {
-        followLineDrawer.GenerateCaveTilesIfNeeded(player.transform.position);
-    }
+        followLineDrawer.GeneratePointIfNeeded();
 
-    float DistanceBetweenVector2AndVector3(Vector2 vec2, Vector3 vec3)
-    {
-        // Ignoramos el componente z de vec3
-        return Vector2.Distance(vec2, new Vector2(vec3.x, vec3.y));
+        caveDrawer.GenerateBordersIfNeeded();
     }
 }

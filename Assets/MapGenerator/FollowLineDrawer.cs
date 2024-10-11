@@ -7,7 +7,6 @@ using System.Reflection;
 using Unity.MLAgents.Integrations.Match3;
 using UnityEngine;
 using UnityEngine.Tilemaps;
-using UnityEngine.WSA;
 
 public class FollowLineDrawer : MonoBehaviour
 {
@@ -21,7 +20,14 @@ public class FollowLineDrawer : MonoBehaviour
     public int caveWidth = 5;
     public int caveThinckness = 40;
 
+    public Vector2 lastGenPoint;
+
     public LinkedList<Vector2> points;   // Los puntos que forman la línea
+
+    private float halfCaveThinkness;
+    private int halfCaveThinknessInt;
+
+    public int pointsToClearWhenPlayerIsClose=8;
 
     void Start()
     {
@@ -34,9 +40,12 @@ public class FollowLineDrawer : MonoBehaviour
         lineRenderer.startColor = UnityEngine.Color.red;
         lineRenderer.endColor = UnityEngine.Color.red;
 
+        halfCaveThinkness = caveThinckness / 2;
+        halfCaveThinknessInt = Mathf.RoundToInt(halfCaveThinkness);
+
         GenerateLine();
         DrawLine();
-        GenerateCaveDeletengTilesInLine();
+        //GenerateCaveDeletengTilesInLine();
     }
 
     // Genera los puntos de la línea
@@ -128,72 +137,41 @@ public class FollowLineDrawer : MonoBehaviour
         }
     }
 
-    void GenerateCaveDeletengTilesInLine()
-    {
-        AddTilesSurroundingFollowLine(caveThinckness, tileDrawer.tileCave);
-        DeleteTilesCollidingWithFollowLine(caveWidth);
-    }
-
-    void AddTilesSurroundingFollowLine(int height, TileBase tile)
+    public void DeleteTilesCollidingWithFollowLine(int deleteRadius)
     {
         foreach (var point in points)
         {
-            int width = player.transform.position.x < point.x ? Mathf.CeilToInt(segmentLength) : -Mathf.CeilToInt(segmentLength);
-            tileDrawer.DrawFullSquare(roundVector2ToInt(point), width, caveThinckness, tileDrawer.tileCave);
+            tileDrawer.DeleteTilesInSquare(roundVector2ToInt(point), deleteRadius);
         }
     }
 
-    void DeleteTilesCollidingWithFollowLine(int deleteRadius)
-    {
-        foreach (var point in points)
-        {
-            DeleteTilesInSquare(roundVector2ToInt(point), deleteRadius);
-        }
-    }
 
-    void DeleteTilesInSquare(Vector2Int center, int deleteRadius)
+    public Vector2 GeneratePointIfNeeded()
     {
-        int squareDeleteRadius = deleteRadius * deleteRadius + 1;
-
-        for (int x = -deleteRadius; x <= deleteRadius; x++)
-        {
-            for (int y = -deleteRadius; y <= deleteRadius; y++)
-            {
-                Vector2Int tilePosition = new Vector2Int(center.x + x, center.y + y);
-                tileDrawer.RemoveTile(tilePosition);
-            }
-        }
-    }
-
-    public void GenerateCaveTilesIfNeeded(Vector3 playerPos)
-    {
+        Vector3 playerPos = player.transform.position;
         Vector2 newPoint = Vector2.zero;
+        bool flag = false;
+        int pointsToClearWhenPlayerIsCloseDirection = 0;
 
         if (DistanceBetweenVector2AndVector3(points.First.Value, playerPos) < minPlayerToHeadTileDistance)
         {
-            newPoint = GeneratePointCave(points.First.Value, points.First.Next.Value);
+            newPoint = GeneratePoint(points.First.Value, points.First.Next.Value);
             points.AddFirst(newPoint);
             points.RemoveLast();
-        }
-        if (DistanceBetweenVector2AndVector3(points.Last.Value, playerPos) < minPlayerToHeadTileDistance)
+        }   
+        else
         {
-            newPoint = GeneratePointCave(points.Last.Value, points.Last.Previous.Value);
-            points.AddLast(newPoint);
-            points.RemoveFirst();
+            if (DistanceBetweenVector2AndVector3(points.Last.Value, playerPos) < minPlayerToHeadTileDistance)
+            {
+                newPoint = GeneratePoint(points.Last.Value, points.Last.Previous.Value);
+                points.AddLast(newPoint);
+                points.RemoveFirst();
+            }
         }
-
-        DrawLine();
-
-        Vector2Int newPointInt = roundVector2ToInt(newPoint);
-
-        int width = player.transform.position.x < newPoint.x ? Mathf.CeilToInt(segmentLength) : -Mathf.CeilToInt(segmentLength);
-        tileDrawer.DrawFullSquare(roundVector2ToInt(newPoint), width, caveThinckness, tileDrawer.tileCave);
-
-        //DeleteTilesCollidingWithFollowLine(caveWidth);
+        return newPoint;
     }
 
-
-    Vector2 GeneratePointCave(Vector2 prevPoint, Vector2 prevPrevPoint)
+    Vector2 GeneratePoint(Vector2 prevPoint, Vector2 prevPrevPoint)
     {
         int attempts = 0;
 
@@ -211,6 +189,8 @@ public class FollowLineDrawer : MonoBehaviour
             // Verificar si el nuevo punto está adecuadamente distanciado de otros puntos
             if (!IsTooCloseToOtherPoints(newPoint))
             {
+                lastGenPoint = newPoint;
+                DrawLine();
                 return newPoint;
             }
 

@@ -85,6 +85,7 @@ public abstract class GeneralMovement : MonoBehaviour
     }
     void Start()
     {
+        Application.targetFrameRate = 30;
         if (followLineDrawer != null)
         {
             transform.position = followLineDrawer.GetMiddlePoint();
@@ -301,6 +302,8 @@ public abstract class GeneralMovement : MonoBehaviour
         }
 
         animator.SetBool("isWalled", isWalled && horizontalMovement != 0);
+        animator.SetBool("isGrounded", isGrounded);
+
 
         // Update animator (if any) about the jumping state
         // animator.SetBool("Jump", !isGrounded);

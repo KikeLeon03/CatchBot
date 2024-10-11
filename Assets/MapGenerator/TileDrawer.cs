@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using TMPro.EditorUtilities;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 
@@ -42,6 +43,14 @@ public class TileDrawer : MonoBehaviour
             DrawTile(tilePosition, tile);
         }
     }
+    public void DeleteTileRow(Vector2Int startPos, int length, TileBase tile)
+    {
+        for (int i = 0; i < length; i++)
+        {
+            Vector2Int tilePosition = new Vector2Int(startPos.x + i, startPos.y);
+            DrawTile(tilePosition, null);
+        }
+    }
 
     public void DrawTileColumn(Vector2Int startPos, int height, TileBase tile)
     {
@@ -49,6 +58,14 @@ public class TileDrawer : MonoBehaviour
         {
             Vector2Int tilePosition = new Vector2Int(startPos.x, startPos.y + i);
             DrawTile(tilePosition, tile);
+        }
+    }
+    public void DeleteTileColumn(Vector2Int startPos, int height, TileBase tile)
+    {
+        for (int i = 0; i < height; i++)
+        {
+            Vector2Int tilePosition = new Vector2Int(startPos.x, startPos.y + i);
+            DrawTile(tilePosition, null);
         }
     }
 
@@ -125,7 +142,7 @@ public class TileDrawer : MonoBehaviour
         {
             for (int x = 0; x <= width; x++)
             {
-                for (int y = 0; x <= height; y++)
+                for (int y = 0; y <= height; y++)
                 {
                     newPoint = new Vector2Int(centerX + x, centerY + y);
                     DrawTile(newPoint, tile);
@@ -136,7 +153,7 @@ public class TileDrawer : MonoBehaviour
         {
             for (int x = 0; x <= width; x++)
             {
-                for (int y = 0; x <= height; y++)
+                for (int y = 0; y <= height; y++)
                 {
                     newPoint = new Vector2Int(centerX - x, centerY + y);
                     DrawTile(newPoint, tile);
@@ -225,6 +242,20 @@ public class TileDrawer : MonoBehaviour
 
                     FloodFill(neighborPos, tile, gen + 1);
                 }
+            }
+        }
+    }
+
+    public void DeleteTilesInSquare(Vector2Int center, int deleteRadius)
+    {
+        int squareDeleteRadius = deleteRadius * deleteRadius + 1;
+
+        for (int x = -deleteRadius; x <= deleteRadius; x++)
+        {
+            for (int y = -deleteRadius; y <= deleteRadius; y++)
+            {
+                Vector2Int tilePosition = new Vector2Int(center.x + x, center.y + y);
+                RemoveTile(tilePosition);
             }
         }
     }

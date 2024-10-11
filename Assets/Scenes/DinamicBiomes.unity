@@ -440,7 +440,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5179933824673998781, guid: d36f3f33628c5cc42a7d4c7174892524, type: 3}
       propertyPath: minPlayerToHeadTileDistance
-      value: 15
+      value: 18
       objectReference: {fileID: 0}
     - target: {fileID: 5179933824673998781, guid: d36f3f33628c5cc42a7d4c7174892524, type: 3}
       propertyPath: pointsToClearWhenPlayerIsClose
