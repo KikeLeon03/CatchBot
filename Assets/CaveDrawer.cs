@@ -12,16 +12,13 @@ public class CaveDrawer : MonoBehaviour
     [SerializeField]
     TileDrawer tileDrawer;
 
-    [SerializeField]
-    GeneralMovement player;
-
-    int[] playerLastPosInt = new int[2];
-    int[] playerNewPosInt = new int[2];
-
     public int caveWidth;
 
     public int xBorderDistance=20;
     public int yBorderDistance=10;
+
+    public int pointsToClearInEndWhenClose = 5;
+    public int pointsToClearInMidWhenClose = 6;
 
     private int halfXBorderDistance;
     private int halfYBorderDistance;
@@ -33,41 +30,69 @@ public class CaveDrawer : MonoBehaviour
         halfXBorderDistance = Mathf.CeilToInt(xBorderDistance/2);
         halfYBorderDistance = Mathf.CeilToInt(yBorderDistance/2);
         tile = tileDrawer.tileCave;
-
-        playerLastPosInt = new int[] { Mathf.RoundToInt(player.transform.position.x), Mathf.RoundToInt(player.transform.position.y)};
-    }
-    void Update()
-    {
-        playerNewPosInt = new int[] { Mathf.RoundToInt(player.transform.position.x), Mathf.RoundToInt(player.transform.position.y) };
     }
 
-    public void GenerateBordersIfNeeded()
+    public bool GenerateBordersIfNeeded(int[] playerLastPosInt, int[] playerNewPosInt)
     {
-        if (playerLastPosInt[0] > playerNewPosInt[0]) {
-            tileDrawer.DrawTileColumn(new Vector2Int(playerNewPosInt[0] - halfXBorderDistance, playerLastPosInt[1] - halfYBorderDistance), yBorderDistance, tile);
+        bool res = false;
+
+        if (playerLastPosInt[0] > playerNewPosInt[0])
+        {
+            res = true;
+            while (playerLastPosInt[0] > playerNewPosInt[0])
+            {
+                tileDrawer.DrawTileColumn(new Vector2Int(playerLastPosInt[0] - halfXBorderDistance, playerLastPosInt[1] - halfYBorderDistance), yBorderDistance, tile);
+                playerLastPosInt[0]--;
+            }
         }
         else
         {
             if (playerLastPosInt[0] < playerNewPosInt[0])
             {
-                tileDrawer.DrawTileColumn(new Vector2Int(playerNewPosInt[0] + halfXBorderDistance, playerLastPosInt[1] - halfYBorderDistance), yBorderDistance, tile);
+                res = true;
+                while (playerLastPosInt[0] < playerNewPosInt[0])
+                {
+                    tileDrawer.DrawTileColumn(new Vector2Int(playerLastPosInt[0] + halfXBorderDistance, playerLastPosInt[1] - halfYBorderDistance), yBorderDistance, tile);
+                    playerLastPosInt[0]++;
+                }
             }
         }
         if (playerLastPosInt[1] > playerNewPosInt[1])
         {
-            tileDrawer.DrawTileRow(new Vector2Int(playerNewPosInt[0] - halfXBorderDistance, playerLastPosInt[1] - halfYBorderDistance), xBorderDistance, tile);
+            res = true;
+            while (playerLastPosInt[1] > playerNewPosInt[1])
+            {
+                tileDrawer.DrawTileRow(new Vector2Int(playerLastPosInt[0] - halfXBorderDistance, playerLastPosInt[1] - halfYBorderDistance), xBorderDistance, tile);
+                playerLastPosInt[1]--;
+            }
         }
         else
         {
             if (playerLastPosInt[1] < playerNewPosInt[1])
             {
-                tileDrawer.DrawTileRow(new Vector2Int(playerNewPosInt[0] - halfXBorderDistance, playerLastPosInt[1] + halfYBorderDistance), xBorderDistance, tile);
+                res = true;
+                while (playerLastPosInt[1] < playerNewPosInt[1])
+                {
+                    tileDrawer.DrawTileRow(new Vector2Int(playerLastPosInt[0] - halfXBorderDistance, playerLastPosInt[1] + halfYBorderDistance), xBorderDistance, tile);
+                    playerLastPosInt[1]++;
+                }
             }
         }
-        playerLastPosInt = playerNewPosInt;
+        return res;
+    }
 
-        tileDrawer.DeleteTilesInSquare(new Vector2Int(Mathf.RoundToInt(followLineDrawer.lastGenPoint.x), Mathf.RoundToInt(followLineDrawer.lastGenPoint.y)), caveWidth);
+    public void ClearEndOfCave(int[] playerNewPosInt)
+    {
+        int pointsToClearWhenCloseNow =
+            Vector2.Distance(followLineDrawer.points.Last.Value, new Vector2(playerNewPosInt[0], playerNewPosInt[1])) >
+            Vector2.Distance(followLineDrawer.points.First.Value, new Vector2(playerNewPosInt[0], playerNewPosInt[1])) ?
+            pointsToClearInEndWhenClose : -pointsToClearInEndWhenClose;
 
-        followLineDrawer.DeleteTilesCollidingWithFollowLine(caveWidth);
+        followLineDrawer.DeleteXTilesCollidingWithFollowLine(pointsToClearWhenCloseNow, caveWidth);
+    }
+
+    public void ClearMiddleOfCave()
+    {
+        followLineDrawer.ClearFromMiddle(pointsToClearInMidWhenClose, caveWidth);
     }
 }

@@ -88,7 +88,7 @@ public abstract class GeneralMovement : MonoBehaviour
         Application.targetFrameRate = 30;
         if (followLineDrawer != null)
         {
-            transform.position = followLineDrawer.GetMiddlePoint();
+            transform.position = followLineDrawer.GetMiddlePoint().Value;
         }
     }
 

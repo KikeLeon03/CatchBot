@@ -19,6 +19,10 @@ public class FollowLineDrawer : MonoBehaviour
     public TileDrawer tileDrawer;
     public int caveWidth = 5;
     public int caveThinckness = 40;
+    public float maxUpAngleInPlatforms = 10f;
+    public float minUpAngleInPlatforms = - 10f;
+    private float maxUpAngleInPlatformsLeft;
+    private float minUpAngleInPlatformsLeft;
 
     public Vector2 lastGenPoint;
 
@@ -39,6 +43,9 @@ public class FollowLineDrawer : MonoBehaviour
         lineRenderer.material = new Material(Shader.Find("Sprites/Default"));  // Usar un material básico
         lineRenderer.startColor = UnityEngine.Color.red;
         lineRenderer.endColor = UnityEngine.Color.red;
+
+        maxUpAngleInPlatformsLeft = 180 - maxUpAngleInPlatforms;
+        minUpAngleInPlatformsLeft = -180 - minUpAngleInPlatforms;
 
         halfCaveThinkness = caveThinckness / 2;
         halfCaveThinknessInt = Mathf.RoundToInt(halfCaveThinkness);
@@ -68,7 +75,7 @@ public class FollowLineDrawer : MonoBehaviour
             while (!validPoint && attempts < 100) // Limitar el número de intentos para evitar ciclos infinitos
             {
                 // Cambiar la dirección suavemente
-                direction = ChangeDirection(direction);
+                direction = ChangeDirection(direction, "");
 
                 // Crear el nuevo punto a lo largo de la dirección calculada
                 Vector2 newPoint = points.Last.Value + direction * segmentLength;
@@ -93,7 +100,7 @@ public class FollowLineDrawer : MonoBehaviour
     }
 
     // Controla los cambios de dirección suavemente
-    Vector2 ChangeDirection(Vector2 currentDirection)
+    Vector2 ChangeDirection(Vector2 currentDirection, string state)
     {
         // Cambiar el ángulo dentro del límite definido por maxAngleChange
         float angleChange = UnityEngine.Random.Range(-maxAngleChange, maxAngleChange);
@@ -101,9 +108,22 @@ public class FollowLineDrawer : MonoBehaviour
         // Crear una nueva dirección rotada
         Vector2 newDirection = Quaternion.Euler(0, 0, angleChange) * currentDirection;
 
+        if (state == "platform")
+        {
+            float angleRight = Vector2.SignedAngle(Vector2.right, newDirection);
+
+            // Verifica si apunta demasiado hacia arriba o demasiado hacia abajo
+            if ((angleRight > maxUpAngleInPlatforms && angleRight < maxUpAngleInPlatformsLeft) || (angleRight < minUpAngleInPlatforms && angleRight > minUpAngleInPlatformsLeft))
+            {
+                return ChangeDirection(currentDirection, state).normalized;
+            }
+        }
+
         // Normalizar la dirección para mantener el tamaño constante
         return newDirection.normalized;
     }
+
+
 
     // TODO: Verifica si el nuevo punto está demasiado cerca de los puntos anteriores
     bool IsTooCloseToOtherPoints(Vector2 newPoint)
@@ -145,8 +165,33 @@ public class FollowLineDrawer : MonoBehaviour
         }
     }
 
+    public void DeleteXTilesCollidingWithFollowLine(int X, int deleteRadius)
+    {
+        if(X > 0)
+        {
+            LinkedListNode<Vector2> t = points.First;
+            while(X > 0)
+            {
+                tileDrawer.DeleteTilesInSquare(roundVector2ToInt(t.Value), deleteRadius);
+                t = t.Next;
+                X--;
+            }
 
-    public Vector2 GeneratePointIfNeeded()
+        }
+        if(X < 0)
+        {
+            LinkedListNode<Vector2> t = points.Last;
+            while (X < 0)
+            {
+                tileDrawer.DeleteTilesInSquare(roundVector2ToInt(t.Value), deleteRadius);
+                t = t.Previous;
+                X++;
+            }
+        }
+    }
+
+
+    public (Vector2,bool) GeneratePointIfNeeded(string state)
     {
         Vector3 playerPos = player.transform.position;
         Vector2 newPoint = Vector2.zero;
@@ -155,23 +200,29 @@ public class FollowLineDrawer : MonoBehaviour
 
         if (DistanceBetweenVector2AndVector3(points.First.Value, playerPos) < minPlayerToHeadTileDistance)
         {
-            newPoint = GeneratePoint(points.First.Value, points.First.Next.Value);
+            flag = true;
+            newPoint = GeneratePoint(points.First.Value, points.First.Next.Value, state);
             points.AddFirst(newPoint);
             points.RemoveLast();
-        }   
+            DrawLine();
+
+        }
         else
         {
             if (DistanceBetweenVector2AndVector3(points.Last.Value, playerPos) < minPlayerToHeadTileDistance)
             {
-                newPoint = GeneratePoint(points.Last.Value, points.Last.Previous.Value);
+                flag = true;
+                newPoint = GeneratePoint(points.Last.Value, points.Last.Previous.Value, state);
                 points.AddLast(newPoint);
                 points.RemoveFirst();
+                DrawLine();
+
             }
         }
-        return newPoint;
+        return (newPoint, flag);
     }
 
-    Vector2 GeneratePoint(Vector2 prevPoint, Vector2 prevPrevPoint)
+    Vector2 GeneratePoint(Vector2 prevPoint, Vector2 prevPrevPoint, string state)
     {
         int attempts = 0;
 
@@ -181,7 +232,7 @@ public class FollowLineDrawer : MonoBehaviour
         while (attempts < 100) // Limitar los intentos para evitar ciclos infinitos
         {
             // Suavemente cambiar la dirección
-            direction = ChangeDirection(direction);
+            direction = ChangeDirection(direction, state);
 
             // Generar el nuevo punto usando el punto anterior y la dirección normalizada
             Vector2 newPoint = prevPoint + direction * segmentLength;
@@ -190,7 +241,6 @@ public class FollowLineDrawer : MonoBehaviour
             if (!IsTooCloseToOtherPoints(newPoint))
             {
                 lastGenPoint = newPoint;
-                DrawLine();
                 return newPoint;
             }
 
@@ -201,19 +251,35 @@ public class FollowLineDrawer : MonoBehaviour
         return Vector2.one; // Or any appropriate error vector
     }
 
-    public Vector2 GetMiddlePoint()
+    public LinkedListNode<Vector2>  GetMiddlePoint()
     {
+        LinkedListNode<Vector2> middlePoint = points.First;
+
         float midPointPos = pointCount / 2;
         int i = 0;
-        foreach(Vector2 point in points)
-        {
-            if(i > midPointPos)
-            {
-                return point;
-            }
+        while (i < midPointPos){
+            middlePoint = middlePoint.Next;
             i++;
         }
-        return Vector2.zero;
+        return middlePoint;
+    }
+
+    public void ClearFromMiddle(int pointsToClear, int clearRadious) {
+        LinkedListNode<Vector2> middle = GetMiddlePoint();
+        LinkedListNode<Vector2> backMiddle = middle;
+        LinkedListNode<Vector2> frontMiddle = middle;
+
+        tileDrawer.DeleteTilesInSquare(new Vector2Int(Mathf.RoundToInt(middle.Value.x), Mathf.RoundToInt(middle.Value.y)), clearRadious);
+        while (pointsToClear > 0)
+        {
+            pointsToClear--;
+
+            backMiddle = backMiddle.Previous;
+            frontMiddle = frontMiddle.Next;
+
+            tileDrawer.DeleteTilesInSquare(new Vector2Int(Mathf.RoundToInt(backMiddle.Value.x), Mathf.RoundToInt(backMiddle.Value.y)), clearRadious);
+            tileDrawer.DeleteTilesInSquare(new Vector2Int(Mathf.RoundToInt(frontMiddle.Value.x), Mathf.RoundToInt(frontMiddle.Value.y)), clearRadious);
+        }
     }
 
     public Vector2Int roundVector2ToInt(Vector2 Vector2)

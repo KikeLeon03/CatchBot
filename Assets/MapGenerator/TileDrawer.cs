@@ -12,6 +12,9 @@ public class TileDrawer : MonoBehaviour
     [SerializeField]
     public TileBase tileCave;
 
+    [SerializeField]
+    public TileBase tilePlatform;
+
     public const int maxFill = 1000;
 
     private int filledTiles;
